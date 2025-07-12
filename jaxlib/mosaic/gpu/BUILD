@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
 load("@rules_python//python:defs.bzl", "py_library")
 load("//jaxlib:jax.bzl", "if_oss", "nanobind_extension")
 
@@ -48,116 +50,21 @@ cc_library(
 )
 
 cc_library(
-    name = "dump",
-    srcs = ["dump.cc"],
-    hdrs = ["dump.h"],
-    deps = [
-        ":library_paths",  # buildcleaner: keep
-        "@com_google_absl//absl/cleanup",
-        "@com_google_absl//absl/log",
-        "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/numeric:bits",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:str_format",
-        "@llvm-project//llvm:Support",
-        "@llvm-project//mlir:GPUDialect",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Support",
-        "@tsl//tsl/platform:path",
+    name = "passes",
+    srcs = [
+        "launch_lowering.cc",
+        "passes.cc",
+        "serde.cc",
     ],
-)
-
-cc_test(
-    name = "dump_test",
-    srcs = ["dump_test.cc"],
-    deps = [
-        ":dump",
-        "//testing/base/public:gunit_main",
-        "@llvm-project//mlir:IR",
+    hdrs = [
+        "launch_lowering.h",
+        "passes.h",
+        "serde.h",
     ],
-)
-
-cc_test(
-    name = "gpu_module_to_assembly_test",
-    srcs = ["gpu_module_to_assembly_test.cc"],
-    deps = [
-        ":passes",
-        "//jaxlib/mosaic/dialect/gpu:mosaic_gpu",
-        "//testing/base/public:gunit_main",
-        "@com_google_absl//absl/strings",
-        "@llvm-project//llvm:Support",
-        "@llvm-project//mlir:ArithToLLVM",
-        "@llvm-project//mlir:BufferizationInterfaces",
-        "@llvm-project//mlir:BuiltinToLLVMIRTranslation",
-        "@llvm-project//mlir:ComplexToLLVM",
-        "@llvm-project//mlir:ControlFlowToLLVM",
-        "@llvm-project//mlir:DataLayoutInterfaces",
-        "@llvm-project//mlir:FuncToLLVM",
-        "@llvm-project//mlir:GPUDialect",
-        "@llvm-project//mlir:GPUToLLVMIRTranslation",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:IndexToLLVM",
-        "@llvm-project//mlir:LLVMCommonConversion",
-        "@llvm-project//mlir:LLVMDialect",
-        "@llvm-project//mlir:LLVMToLLVMIRTranslation",
-        "@llvm-project//mlir:MathToLLVM",
-        "@llvm-project//mlir:MemRefDialect",
-        "@llvm-project//mlir:MemRefToLLVM",
-        "@llvm-project//mlir:NVVMDialect",
-        "@llvm-project//mlir:NVVMTarget",
-        "@llvm-project//mlir:NVVMToLLVM",
-        "@llvm-project//mlir:NVVMToLLVMIRTranslation",
-        "@llvm-project//mlir:Pass",
-        "@llvm-project//mlir:ROCDLDialect",
-        "@llvm-project//mlir:SCFUtils",
-        "@llvm-project//mlir:Support",
-        "@llvm-project//mlir:UBToLLVM",
-        "@llvm-project//mlir:VectorDialect",
-        "@xla//xla/service/gpu/llvm_gpu_backend:nvptx_libdevice_path",
-    ],
-)
-
-cc_library(
-    name = "serde",
-    srcs = ["serde.cc"],
-    hdrs = ["serde.h"],
     deps = [
         "//jaxlib/mosaic:pass_boilerplate",
         "//jaxlib/mosaic:serde",
         "@llvm-project//llvm:Support",
-        "@llvm-project//mlir:DataLayoutInterfaces",
-        "@llvm-project//mlir:IR",
-        "@llvm-project//mlir:Pass",
-        "@llvm-project//mlir:Support",
-        "@llvm-project//mlir:VectorDialect",
-    ],
-)
-
-cc_library(
-    name = "passes",
-    srcs = [
-        "assembly_to_binary.cc",
-        "gpu_module_to_assembly.cc",
-        "launch_lowering.cc",
-        "passes.cc",
-    ],
-    hdrs = [
-        "assembly_to_binary.h",
-        "gpu_module_to_assembly.h",
-        "launch_lowering.h",
-        "passes.h",
-    ],
-    deps = [
-        ":dump",
-        "//jaxlib/mosaic:pass_boilerplate",
-        "@com_google_absl//absl/base",
-        "@com_google_absl//absl/status",
-        "@com_google_absl//absl/status:statusor",
-        "@llvm-project//llvm:IRReader",
-        "@llvm-project//llvm:Support",
-        "@llvm-project//llvm:ir_headers",
         "@llvm-project//mlir:DataLayoutInterfaces",
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:GPUDialect",
@@ -165,17 +72,10 @@ cc_library(
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:LLVMCommonConversion",
         "@llvm-project//mlir:LLVMDialect",
-        "@llvm-project//mlir:NVVMDialect",
-        "@llvm-project//mlir:NVVMTarget",
         "@llvm-project//mlir:Pass",
         "@llvm-project//mlir:Support",
-        "@llvm-project//mlir:TargetLLVM",
         "@llvm-project//mlir:TransformUtils",
         "@llvm-project//mlir:VectorDialect",
-        "@xla//xla/service/gpu/llvm_gpu_backend:load_ir_module",
-        "@xla//xla/stream_executor/cuda:compilation_options",
-        "@xla//xla/stream_executor/cuda:compilation_provider",
-        "@xla//xla/stream_executor/cuda:cuda_compute_capability",
     ],
 )
 
@@ -187,14 +87,12 @@ CAPI_HEADERS = [
     "integrations/c/passes.h",
 ]
 
-# `mlir_capi` should be used only to wrap hardware-agnostic passes that need to be called directly
-# from Python.
 cc_library(
     name = "mlir_capi",
     srcs = CAPI_SOURCES,
     hdrs = CAPI_HEADERS,
     deps = [
-        ":serde",
+        ":passes",
         "@llvm-project//mlir:CAPIIRHeaders",
     ],
 )
@@ -259,21 +157,19 @@ cc_library(
         ],
     ),
     deps = [
-        ":dump",
-        ":library_paths",  # buildcleaner: keep
+        ":library_paths",
         ":nvshmem",
         ":passes",
-        ":serde",
         ":target",
         "//jaxlib/cuda:cuda_vendor",
         "//jaxlib/mosaic/dialect/gpu:mosaic_gpu",
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/base:core_headers",
-        "@com_google_absl//absl/base:no_destructor",
+        "@com_google_absl//absl/cleanup",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
+        "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
@@ -318,21 +214,11 @@ cc_library(
         "@llvm-project//mlir:UBToLLVM",
         "@llvm-project//mlir:VectorDialect",
         "@llvm-project//mlir:VectorToLLVM",
-        "@local_config_cuda//cuda:cuda_headers",
-        "@tsl//tsl/platform:path",
         "@tsl//tsl/profiler/lib:traceme",
-        "@xla//xla:executable_run_options",
         "@xla//xla/ffi",
         "@xla//xla/ffi:ffi_api",
         "@xla//xla/service:custom_call_status",
         "@xla//xla/service:custom_call_target_registry",
-        "@xla//xla/service/gpu/llvm_gpu_backend:nvptx_libdevice_path",
-        "@xla//xla/stream_executor/cuda:assemble_compilation_provider",
-        "@xla//xla/stream_executor/cuda:compilation_provider",
-        "@xla//xla/stream_executor/cuda:compilation_provider_options",
-        "@xla//xla/stream_executor/cuda:cuda_compute_capability",
-        "@xla//xla/stream_executor/cuda:ptx_compiler_support",
-        "@xla//xla/tsl/platform:statusor",
     ],
     alwayslink = True,
 )
