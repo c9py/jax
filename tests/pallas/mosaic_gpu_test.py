@@ -4709,44 +4709,67 @@ class WarpSpecializedPipelineTest(PallasTest):
 
   def test_different_delay_release(self):
     self.skip_if_wg_semantics()  # Crashes!
-    m, n = 128, 64
-    blk_m, blk_n = 32, 64
-    in_specs = [
-        plgpu.BlockSpec(
-            block_shape=(blk_m, blk_n),
-            index_map=lambda i, j: (i, j),
-            delay_release=delay,
+    for i in range(100):
+      m, n = 128, 64
+      blk_m, blk_n = 32, 64
+      in_specs = [
+          plgpu.BlockSpec(
+              block_shape=(blk_m, blk_n),
+              index_map=lambda i, j: (i, j),
+              delay_release=delay,
+          )
+          for delay in range(3)
+      ]
+      out_spec = pl.BlockSpec(
+          block_shape=(blk_m, blk_n),
+          index_map=lambda i, j: (i, j),
+      )
+
+      def tiled_add_kernel(_, x_smem, y_smem, z_smem, o_smem):
+        o_smem[...] = x_smem[...] + y_smem[...] + z_smem[...]
+
+      def run_pipeline(emit_pipeline):
+        grid = (m // blk_m, n // blk_n)
+        return emit_pipeline(
+            tiled_add_kernel,
+            grid=grid,
+            max_concurrent_steps=4,
+            in_specs=in_specs,
+            out_specs=[out_spec],
         )
-        for delay in range(3)
-    ]
-    out_spec = pl.BlockSpec(
-        block_shape=(blk_m, blk_n),
-        index_map=lambda i, j: (i, j),
-    )
 
-    def tiled_add_kernel(_, x_smem, y_smem, z_smem, o_smem):
-      o_smem[...] = x_smem[...] + y_smem[...] + z_smem[...]
+      def pipeline(*gmem_refs):
+        return run_pipeline(mgpu_pipeline.emit_pipeline)(*gmem_refs)
 
-    def pipeline(*gmem_refs):
-      grid = (m // blk_m, n // blk_n)
-      return mgpu_pipeline.emit_pipeline(
-          tiled_add_kernel,
-          grid=grid,
-          max_concurrent_steps=4,
-          in_specs=in_specs,
-          out_specs=[out_spec],
-      )(*gmem_refs)
+      def wg_pipeline(*gmem_refs):
+        return run_pipeline(
+            functools.partial(
+                mgpu_pipeline.emit_pipeline_warp_specialized,
+                memory_registers=40,
+                num_compute_wgs=1,
+                wg_axis="wg",
+            )
+        )(*gmem_refs)
+      kernel = self.kernel(
+          pipeline,
+          out_shape=jax.ShapeDtypeStruct((m, n), jnp.float32),
+          grid=(1,),
+          grid_names=("_",)
+      )
+      x = jax.random.uniform(jax.random.key(0), (m, n), dtype=jnp.float32)
+      y = jax.random.uniform(jax.random.key(1), (m, n), dtype=jnp.float32)
+      z = jax.random.uniform(jax.random.key(3), (m, n), dtype=jnp.float32)
+      np.testing.assert_allclose(kernel(x, y, z), x + y + z)
 
-    kernel = self.kernel(
-        pipeline,
-        out_shape=jax.ShapeDtypeStruct((m, n), jnp.float32),
-        grid=(1,),
-        grid_names=("_",)
-    )
-    x = jax.random.uniform(jax.random.key(0), (m, n), dtype=jnp.float32)
-    y = jax.random.uniform(jax.random.key(1), (m, n), dtype=jnp.float32)
-    z = jax.random.uniform(jax.random.key(3), (m, n), dtype=jnp.float32)
-    np.testing.assert_allclose(kernel(x, y, z), x + y + z)
+      wg_kernel = self.kernel(
+          wg_pipeline,
+          out_shape=jax.ShapeDtypeStruct((m, n), jnp.float32),
+          grid=(1,),
+          grid_names=("_",),
+          num_threads=2,
+          thread_name="wg",
+      )
+      np.testing.assert_allclose(wg_kernel(x, y, z), x + y + z)
 
   @parameterized.product(
       delay_release=[0, 1],
