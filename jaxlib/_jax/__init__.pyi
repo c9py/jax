@@ -253,6 +253,7 @@ def register_custom_call_target(
     capsule: Any,
     platform: str,
     api_version: int = ...,
+    traits: int = ...,
 ) -> _Status: ...
 def register_custom_call_partitioner(
     name: str,

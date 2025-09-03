@@ -1311,7 +1311,6 @@ cc_library(
 pytype_strict_library(
     name = "xla_client",
     srcs = ["xla_client.py"],
-    pytype_srcs = ["xla_client.pyi"],
     visibility = [":xla_python"],
     deps = py_deps([
         "numpy",
