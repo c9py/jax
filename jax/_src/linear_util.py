@@ -349,7 +349,7 @@ class DebugInfo(NamedTuple):
     """Get the arg_names with a safety check."""
     if self.arg_names is not None:
       # TODO(necula): re-enable this assertion
-      #assert len(self.arg_names) == expected_count, (self.arg_names, expected_count)
+      assert len(self.arg_names) == expected_count, (self.arg_names, expected_count)
       if len(self.arg_names) != expected_count:
         return ("",) * expected_count
       return self.arg_names
@@ -357,9 +357,8 @@ class DebugInfo(NamedTuple):
 
   def assert_arg_names(self, expected_count: int):
     # TODO(necula): re-enable this assertion
-    #assert self.arg_names is None or len(self.arg_names) == expected_count, (
-    #      self.arg_names, expected_count)
-    pass
+    assert self.arg_names is None or len(self.arg_names) == expected_count, (
+          self.arg_names, expected_count)
 
   def filter_arg_names(self, keep: Sequence[bool]) -> tuple[str, ...] | None:
     """Keep only the arg_names for which `keep` is True."""
@@ -372,16 +371,15 @@ class DebugInfo(NamedTuple):
     assert self.result_paths is not initial_result_paths and not callable(self.result_paths), self
     if self.result_paths is not None:
       # TODO(necula): re-enable this assertion
-      # assert len(self.result_paths) == expected_count, (self.result_paths, expected_count)  # type: ignore
+      assert len(self.result_paths) == expected_count, (self.result_paths, expected_count)  # type: ignore
       return self.result_paths  # type: ignore
 
     return ("",) * expected_count
 
   def assert_result_paths(self, expected_count: int):
     # TODO(necula): re-enable this assertion
-    #assert self.result_paths is None or len(self.result_paths) == expected_count, (  # type: ignore
-    #      self.result_paths, expected_count)
-    pass
+    assert self.result_paths is None or len(self.result_paths) == expected_count, (  # type: ignore
+          self.result_paths, expected_count)
 
   def filter_result_paths(self, keep: Sequence[bool]) -> tuple[str, ...] | None:
     """Keep only the result_paths for which `keep` is True."""
