@@ -1536,6 +1536,30 @@ FailureOr<Value> canonicalize_arith_extf(const CanonicalizeContext &ctx,
   return new_result;
 }
 
+FailureOr<Value> canonicalize_arith_add(const CanonicalizeContext& ctx,
+                                        Operation& raw_op) {
+  arith::AddIOp op = cast<arith::AddIOp>(raw_op);
+  Type lhs_type = op.getLhs().getType();
+  Type rhs_type = op.getRhs().getType();
+
+  if (isa<VectorType>(lhs_type) && isa<VectorType>(rhs_type)) {
+    Type lhs_element_type = cast<VectorType>(lhs_type).getElementType();
+    Type rhs_element_type = cast<VectorType>(rhs_type).getElementType();
+    bool is_supported = (lhs_element_type.isSignlessInteger(16) &&
+                         rhs_element_type.isSignlessInteger(16)) ||
+                        (lhs_element_type.isSignlessInteger(32) &&
+                         rhs_element_type.isSignlessInteger(32));
+    if (!is_supported) {
+      return op.emitOpError(
+                 "Only 16-bit and 32-bit vector addition are supported. ")
+             << "Type: " << lhs_element_type << " is not supported. "
+             << "Please cast your input to a different type.";
+    }
+  }
+
+  return raw_op.getResult(0);
+}
+
 FailureOr<Value> canonicalize_tpu_extf(const CanonicalizeContext &ctx,
                                        Operation &raw_op) {
   auto op = cast<tpu::ExtFOp>(raw_op);
@@ -1643,6 +1667,7 @@ const llvm::StringMap<canonicalize_rule_type> &rules() {
       {arith::SIToFPOp::getOperationName(), canonicalize_sitofp},
       {arith::TruncFOp::getOperationName(), canonicalize_arith_truncf},
       {arith::ExtFOp::getOperationName(), canonicalize_arith_extf},
+      {arith::AddIOp::getOperationName(), canonicalize_arith_add},
       {tpu::TruncFOp::getOperationName(), canonicalize_tpu_truncf},
       {tpu::ExtFOp::getOperationName(), canonicalize_tpu_extf},
       {tpu::TransposeOp::getOperationName(), canonicalize_transpose},
